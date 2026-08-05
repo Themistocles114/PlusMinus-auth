@@ -1,46 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Password</title>
-  <style>
-    body{
-      font-family:Arial,sans-serif;
-      background:#f5f5f5;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-      margin:0;
-    }
-    .card{
-      background:white;
-      padding:40px;
-      border-radius:12px;
-      max-width:420px;
-      text-align:center;
-      box-shadow:0 4px 20px rgba(0,0,0,.08);
-    }
-    h1{
-      margin-top:0;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set a New Password</title>
+<style>
+  :root {
+    --ink: #1b2521;
+    --paper: #f6f4ef;
+    --moss: #2f6f4f;
+    --moss-deep: #234f39;
+    --line: #d8d3c6;
+    --error: #b3492f;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .mark {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 28px;
+    border-radius: 50%;
+    background: var(--moss);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mark svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--paper);
+    stroke-width: 2.2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    text-align: center;
+  }
+
+  p.lead {
+    font-size: 15px;
+    line-height: 1.55;
+    color: #566058;
+    margin: 0 0 30px;
+    text-align: center;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  input[type="password"],
+  input[type="text"] {
+    width: 100%;
+    font-size: 15px;
+    padding: 11px 44px 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  input:focus {
+    border-color: var(--moss);
+  }
+
+  .toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: #8a8f87;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .toggle:hover { color: var(--ink); }
+
+  .rules {
+    list-style: none;
+    margin: 2px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .rules li {
+    font-size: 12.5px;
+    color: #8a8f87;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rules li::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #c8cdc3;
+    flex-shrink: 0;
+  }
+
+  .rules li.met {
+    color: var(--moss-deep);
+  }
+
+  .rules li.met::before {
+    background: var(--moss);
+  }
+
+  .error-text {
+    font-size: 12.5px;
+    color: var(--error);
+    min-height: 16px;
+    margin-top: -4px;
+  }
+
+  button[type="submit"] {
+    appearance: none;
+    border: none;
+    background: var(--moss);
+    color: var(--paper);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  button[type="submit"]:hover {
+    background: var(--moss-deep);
+  }
+
+  button[type="submit"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 2px;
+  }
+
+  /* Success state */
+  .success {
+    display: none;
+    text-align: center;
+  }
+
+  .success.show { display: block; }
+  .card.hide-form form,
+  .card.hide-form p.lead { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
 </head>
 <body>
+  <div class="card" id="card">
+    <div class="mark" id="markIcon">
+      <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+    </div>
 
-<div class="card">
-<h1>Reset Your Password</h1>
+    <h1 id="heading">Set a new password</h1>
+    <p class="lead" id="lead">Choose a new password for your account.</p>
 
-<p>
-This page will allow you to securely reset your PlusMinus password.
-</p>
+    <form id="resetForm" novalidate>
+      <div class="field">
+        <label for="password">New password</label>
+        <div class="input-wrap">
+          <input type="password" id="password" name="password" autocomplete="new-password" required>
+          <button type="button" class="toggle" data-target="password">Show</button>
+        </div>
+        <ul class="rules" id="rules">
+          <li id="rule-length">At least 8 characters</li>
+          <li id="rule-case">Upper and lowercase letters</li>
+          <li id="rule-number">At least one number</li>
+        </ul>
+      </div>
 
-<p>
-This feature is currently being completed.
-</p>
+      <div class="field">
+        <label for="confirm">Confirm password</label>
+        <div class="input-wrap">
+          <input type="password" id="confirm" name="confirm" autocomplete="new-password" required>
+          <button type="button" class="toggle" data-target="confirm">Show</button>
+        </div>
+        <div class="error-text" id="matchError"></div>
+      </div>
 
-</div>
+      <button type="submit" id="submitBtn" disabled>Reset password</button>
+    </form>
 
+    <div class="success" id="successState">
+      <h1>Password updated</h1>
+      <p class="lead" style="margin-bottom:0;">Your password has been changed. You can close this tab and sign in with your new password.</p>
+    </div>
+  </div>
+
+  <script>
+    const password = document.getElementById('password');
+    const confirm = document.getElementById('confirm');
+    const submitBtn = document.getElementById('submitBtn');
+    const matchError = document.getElementById('matchError');
+    const form = document.getElementById('resetForm');
+
+    const ruleLength = document.getElementById('rule-length');
+    const ruleCase = document.getElementById('rule-case');
+    const ruleNumber = document.getElementById('rule-number');
+
+    document.querySelectorAll('.toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.textContent = isPassword ? 'Hide' : 'Show';
+      });
+    });
+
+    function validate() {
+      const val = password.value;
+      const hasLength = val.length >= 8;
+      const hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
+      const hasNumber = /[0-9]/.test(val);
+
+      ruleLength.classList.toggle('met', hasLength);
+      ruleCase.classList.toggle('met', hasCase);
+      ruleNumber.classList.toggle('met', hasNumber);
+
+      const passwordValid = hasLength && hasCase && hasNumber;
+      const matches = confirm.value.length > 0 && confirm.value === val;
+
+      if (confirm.value.length > 0 && !matches) {
+        matchError.textContent = "Passwords don't match";
+      } else {
+        matchError.textContent = '';
+      }
+
+      submitBtn.disabled = !(passwordValid && matches);
+    }
+
+    password.addEventListener('input', validate);
+    confirm.addEventListener('input', validate);
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (submitBtn.disabled) return;
+
+      // TODO: wire this up to your backend, e.g.:
+      // fetch('/api/reset-password', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ token: new URLSearchParams(location.search).get('token'), password: password.value })
+      // })
+
+      document.getElementById('card').classList.add('hide-form');
+      document.getElementById('markIcon').innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg>';
+      document.getElementById('successState').classList.add('show');
+    });
+  </script>
 </body>
 </html>
