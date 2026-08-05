@@ -1,8 +1,31 @@
 <!DOCTYPE html>
+<!--
+  Plus/Minus — password reset page.
+
+  This file does NOT belong to the Expo app. It is a drop-in replacement for
+  the `/reset-password` page on the standalone auth-pages site
+  (auth.yourplusminus.com, deployed on Vercel). Copy it into that project.
+
+  Why it exists: the page previously deployed there was a visual mockup — its
+  submit handler carried a `// TODO: wire this up to your backend` comment and
+  showed the success state without calling anything, so nobody's password ever
+  actually changed. It also read the token from `location.search`, but Supabase
+  returns it in the URL *hash*.
+
+  How it works: Supabase's recovery link lands here with
+  `#access_token=...&type=recovery`. That access token IS a short-lived session
+  for the account, so updating the password is a single authenticated call to
+  PUT /auth/v1/user. No SDK, no build step — one static file.
+
+  The anon key below is the publishable key (the same one shipped in the app
+  bundle and in every Supabase browser client). It is safe in public HTML; row
+  level security is what protects the data. Never put the service_role key here.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
 <title>Set a New Password</title>
 <style>
   :root {
@@ -11,15 +34,12 @@
     --moss: #2f6f4f;
     --moss-deep: #234f39;
     --line: #d8d3c6;
-    --error: #b3492f;
+    --danger: #a8342b;
   }
 
   * { box-sizing: border-box; }
 
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
+  html, body { height: 100%; margin: 0; }
 
   body {
     background: var(--paper);
@@ -31,10 +51,7 @@
     padding: 24px;
   }
 
-  .card {
-    width: 100%;
-    max-width: 380px;
-  }
+  .card { width: 100%; max-width: 420px; }
 
   .mark {
     width: 56px;
@@ -47,11 +64,13 @@
     justify-content: center;
   }
 
+  .mark.is-danger { background: var(--danger); }
+
   .mark svg {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     stroke: var(--paper);
-    stroke-width: 2.2;
+    stroke-width: 2.5;
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -61,11 +80,11 @@
     font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
     text-align: center;
   }
 
-  p.lead {
+  .lede {
     font-size: 15px;
     line-height: 1.55;
     color: #566058;
@@ -73,246 +92,311 @@
     text-align: center;
   }
 
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
   label {
+    display: block;
     font-size: 13px;
-    font-weight: 500;
-    color: var(--ink);
+    font-weight: 600;
+    margin-bottom: 6px;
   }
 
-  .input-wrap {
-    position: relative;
-  }
+  .field { margin-bottom: 18px; }
 
-  input[type="password"],
-  input[type="text"] {
+  .input-wrap { position: relative; }
+
+  input {
     width: 100%;
     font-size: 15px;
-    padding: 11px 44px 11px 13px;
+    font-family: inherit;
+    color: var(--ink);
+    background: #fff;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fff;
-    color: var(--ink);
-    outline: none;
-    transition: border-color 0.15s ease;
+    padding: 11px 62px 11px 12px;
   }
 
   input:focus {
+    outline: 2px solid var(--moss);
+    outline-offset: -1px;
     border-color: var(--moss);
   }
 
   .toggle {
     position: absolute;
-    right: 8px;
     top: 50%;
+    right: 8px;
     transform: translateY(-50%);
-    background: none;
-    border: none;
-    padding: 6px;
-    cursor: pointer;
-    color: #8a8f87;
-    font-size: 12px;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #566058;
+    font-size: 13px;
     font-weight: 500;
+    font-family: inherit;
+    padding: 4px 6px;
+    cursor: pointer;
   }
 
-  .toggle:hover { color: var(--ink); }
+  .toggle:hover { color: var(--moss); }
 
   .rules {
     list-style: none;
-    margin: 2px 0 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .rules li {
+    margin: 10px 0 0;
     font-size: 12.5px;
     color: #8a8f87;
-    display: flex;
-    align-items: center;
-    gap: 6px;
   }
+
+  .rules li { padding-left: 18px; position: relative; line-height: 1.9; }
 
   .rules li::before {
-    content: "";
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #c8cdc3;
-    flex-shrink: 0;
+    content: "○";
+    position: absolute;
+    left: 2px;
   }
 
-  .rules li.met {
-    color: var(--moss-deep);
+  .rules li.met { color: var(--moss); }
+  .rules li.met::before { content: "●"; }
+
+  .error {
+    font-size: 13px;
+    color: var(--danger);
+    min-height: 18px;
+    margin-top: 6px;
   }
 
-  .rules li.met::before {
-    background: var(--moss);
-  }
-
-  .error-text {
-    font-size: 12.5px;
-    color: var(--error);
-    min-height: 16px;
-    margin-top: -4px;
-  }
-
-  button[type="submit"] {
+  button.primary {
+    width: 100%;
     appearance: none;
-    border: none;
+    border: 1px solid var(--moss);
     background: var(--moss);
     color: var(--paper);
     font-size: 15px;
     font-weight: 600;
-    padding: 13px 22px;
+    font-family: inherit;
+    padding: 12px 22px;
     border-radius: 8px;
     cursor: pointer;
-    margin-top: 8px;
-    transition: background 0.15s ease, opacity 0.15s ease;
+    transition: background 0.15s ease;
   }
 
-  button[type="submit"]:hover {
-    background: var(--moss-deep);
-  }
+  button.primary:hover:not(:disabled) { background: var(--moss-deep); }
 
-  button[type="submit"]:disabled {
-    opacity: 0.5;
+  button.primary:disabled {
+    opacity: 0.45;
     cursor: not-allowed;
   }
 
-  button:focus-visible,
-  input:focus-visible {
-    outline: 2px solid var(--moss);
-    outline-offset: 2px;
-  }
-
-  /* Success state */
-  .success {
-    display: none;
+  .hint {
+    margin-top: 16px;
+    font-size: 12.5px;
+    color: #8a8f87;
     text-align: center;
   }
 
-  .success.show { display: block; }
-  .card.hide-form form,
-  .card.hide-form p.lead { display: none; }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; }
-  }
+  .hidden { display: none; }
 </style>
 </head>
 <body>
-  <div class="card" id="card">
-    <div class="mark" id="markIcon">
-      <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
-    </div>
+  <div class="card">
 
-    <h1 id="heading">Set a new password</h1>
-    <p class="lead" id="lead">Choose a new password for your account.</p>
+    <!-- Verifying the link in the URL -->
+    <section id="loadingState">
+      <p class="lede">Checking your reset link…</p>
+    </section>
 
-    <form id="resetForm" novalidate>
-      <div class="field">
-        <label for="password">New password</label>
-        <div class="input-wrap">
-          <input type="password" id="password" name="password" autocomplete="new-password" required>
-          <button type="button" class="toggle" data-target="password">Show</button>
-        </div>
-        <ul class="rules" id="rules">
-          <li id="rule-length">At least 8 characters</li>
-          <li id="rule-case">Upper and lowercase letters</li>
-          <li id="rule-number">At least one number</li>
-        </ul>
+    <!-- The form -->
+    <section id="formState" class="hidden">
+      <div class="mark">
+        <svg viewBox="0 0 24 24"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg>
       </div>
+      <h1>Set a new password</h1>
+      <p class="lede">Choose a new password for your account.</p>
 
-      <div class="field">
-        <label for="confirm">Confirm password</label>
-        <div class="input-wrap">
-          <input type="password" id="confirm" name="confirm" autocomplete="new-password" required>
-          <button type="button" class="toggle" data-target="confirm">Show</button>
+      <form id="resetForm" novalidate>
+        <div class="field">
+          <label for="password">New password</label>
+          <div class="input-wrap">
+            <input id="password" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+            <button type="button" class="toggle" data-target="password">Show</button>
+          </div>
+          <ul class="rules">
+            <li id="rule-length">At least 8 characters</li>
+            <li id="rule-case">Upper and lowercase letters</li>
+            <li id="rule-number">At least one number</li>
+          </ul>
         </div>
-        <div class="error-text" id="matchError"></div>
+
+        <div class="field">
+          <label for="confirm">Confirm password</label>
+          <div class="input-wrap">
+            <input id="confirm" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+            <button type="button" class="toggle" data-target="confirm">Show</button>
+          </div>
+          <div class="error" id="formError"></div>
+        </div>
+
+        <button type="submit" class="primary" id="submitBtn" disabled>Reset password</button>
+      </form>
+    </section>
+
+    <!-- Done -->
+    <section id="successState" class="hidden">
+      <div class="mark">
+        <svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg>
       </div>
-
-      <button type="submit" id="submitBtn" disabled>Reset password</button>
-    </form>
-
-    <div class="success" id="successState">
       <h1>Password updated</h1>
-      <p class="lead" style="margin-bottom:0;">Your password has been changed. You can close this tab and sign in with your new password.</p>
-    </div>
+      <p class="lede">Your password has been changed. You can close this tab and sign in to Plus/Minus with your new password.</p>
+    </section>
+
+    <!-- Bad or used link -->
+    <section id="expiredState" class="hidden">
+      <div class="mark is-danger">
+        <svg viewBox="0 0 24 24"><path d="M12 8v5"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <h1>This link has expired</h1>
+      <p class="lede" id="expiredMessage">
+        Password reset links can only be used once, and they expire an hour after they're sent.
+        Request a new one from the Plus/Minus app and open it on this device.
+      </p>
+    </section>
+
   </div>
 
   <script>
-    const password = document.getElementById('password');
-    const confirm = document.getElementById('confirm');
-    const submitBtn = document.getElementById('submitBtn');
-    const matchError = document.getElementById('matchError');
-    const form = document.getElementById('resetForm');
+    var SUPABASE_URL = 'https://oijokuglblwycihoowtb.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pam9rdWdsYmx3eWNpaG9vd3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNjU2NzAsImV4cCI6MjA5OTc0MTY3MH0.e4kBwiHZZok757KNkjr88KVoaifdaZN30YVmIo7pQUY';
 
-    const ruleLength = document.getElementById('rule-length');
-    const ruleCase = document.getElementById('rule-case');
-    const ruleNumber = document.getElementById('rule-number');
+    var els = {
+      loading: document.getElementById('loadingState'),
+      form: document.getElementById('formState'),
+      success: document.getElementById('successState'),
+      expired: document.getElementById('expiredState'),
+      expiredMessage: document.getElementById('expiredMessage'),
+      password: document.getElementById('password'),
+      confirm: document.getElementById('confirm'),
+      submitBtn: document.getElementById('submitBtn'),
+      formError: document.getElementById('formError'),
+      ruleLength: document.getElementById('rule-length'),
+      ruleCase: document.getElementById('rule-case'),
+      ruleNumber: document.getElementById('rule-number')
+    };
 
-    document.querySelectorAll('.toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        const isPassword = input.type === 'password';
+    function show(section) {
+      [els.loading, els.form, els.success, els.expired].forEach(function (el) {
+        el.classList.add('hidden');
+      });
+      section.classList.remove('hidden');
+    }
+
+    function expire(message) {
+      if (message) els.expiredMessage.textContent = message;
+      show(els.expired);
+    }
+
+    // --- Read the recovery token out of the URL -----------------------------
+    // Supabase's implicit flow returns it in the hash, not the query string.
+    var hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    var query = new URLSearchParams(location.search);
+    var accessToken = hash.get('access_token');
+    var linkError = hash.get('error_description') || hash.get('error');
+
+    // Strip the token from the address bar so it doesn't linger in history or
+    // get copied out of the URL. The value is already captured above.
+    if (location.hash) {
+      history.replaceState(null, '', location.pathname);
+    }
+
+    if (linkError) {
+      expire(decodeURIComponent(linkError).replace(/\+/g, ' '));
+    } else if (accessToken) {
+      show(els.form);
+      els.password.focus();
+    } else if (query.get('code')) {
+      // PKCE flow: exchanging the code needs a verifier that only exists in the
+      // browser storage of the app's own origin, which this page isn't. The app
+      // client uses the implicit flow, so this shouldn't happen — if it starts
+      // happening, the app's Supabase client has had `flowType: 'pkce'` set.
+      expire('This reset link is in a format this page cannot complete. Please contact support.');
+    } else {
+      expire('This page opens from the link in a password reset email. Request one from the Plus/Minus app to get started.');
+    }
+
+    // --- Form behaviour -----------------------------------------------------
+    Array.prototype.forEach.call(document.querySelectorAll('.toggle'), function (btn) {
+      btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.target);
+        var isPassword = input.type === 'password';
         input.type = isPassword ? 'text' : 'password';
         btn.textContent = isPassword ? 'Hide' : 'Show';
       });
     });
 
     function validate() {
-      const val = password.value;
-      const hasLength = val.length >= 8;
-      const hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
-      const hasNumber = /[0-9]/.test(val);
+      var val = els.password.value;
+      var hasLength = val.length >= 8;
+      var hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
+      var hasNumber = /[0-9]/.test(val);
 
-      ruleLength.classList.toggle('met', hasLength);
-      ruleCase.classList.toggle('met', hasCase);
-      ruleNumber.classList.toggle('met', hasNumber);
+      els.ruleLength.classList.toggle('met', hasLength);
+      els.ruleCase.classList.toggle('met', hasCase);
+      els.ruleNumber.classList.toggle('met', hasNumber);
 
-      const passwordValid = hasLength && hasCase && hasNumber;
-      const matches = confirm.value.length > 0 && confirm.value === val;
+      var matches = els.confirm.value.length > 0 && els.confirm.value === val;
+      els.formError.textContent =
+        els.confirm.value.length > 0 && !matches ? "Passwords don't match" : '';
 
-      if (confirm.value.length > 0 && !matches) {
-        matchError.textContent = "Passwords don't match";
-      } else {
-        matchError.textContent = '';
-      }
-
-      submitBtn.disabled = !(passwordValid && matches);
+      els.submitBtn.disabled = !(hasLength && hasCase && hasNumber && matches);
     }
 
-    password.addEventListener('input', validate);
-    confirm.addEventListener('input', validate);
+    els.password.addEventListener('input', validate);
+    els.confirm.addEventListener('input', validate);
 
-    form.addEventListener('submit', function (e) {
+    document.getElementById('resetForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      if (submitBtn.disabled) return;
+      if (els.submitBtn.disabled) return;
 
-      // TODO: wire this up to your backend, e.g.:
-      // fetch('/api/reset-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ token: new URLSearchParams(location.search).get('token'), password: password.value })
-      // })
+      els.submitBtn.disabled = true;
+      els.submitBtn.textContent = 'Updating…';
+      els.formError.textContent = '';
 
-      document.getElementById('card').classList.add('hide-form');
-      document.getElementById('markIcon').innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg>';
-      document.getElementById('successState').classList.add('show');
+      // The recovery access token is a real (short-lived) session for this
+      // account, so this is just an authenticated "update my own user" call.
+      fetch(SUPABASE_URL + '/auth/v1/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + accessToken
+        },
+        body: JSON.stringify({ password: els.password.value })
+      })
+        .then(function (res) {
+          return res.json().then(function (body) {
+            return { ok: res.ok, status: res.status, body: body };
+          });
+        })
+        .then(function (result) {
+          if (result.ok) {
+            show(els.success);
+            return;
+          }
+          // An expired or already-spent token fails here rather than on load.
+          if (result.status === 401 || result.status === 403) {
+            expire('This link has already been used or has expired. Request a new one from the Plus/Minus app.');
+            return;
+          }
+          var msg =
+            (result.body && (result.body.msg || result.body.message || result.body.error_description)) ||
+            'Something went wrong. Please try again.';
+          els.formError.textContent = msg;
+          els.submitBtn.disabled = false;
+          els.submitBtn.textContent = 'Reset password';
+        })
+        .catch(function () {
+          els.formError.textContent = 'Network error. Check your connection and try again.';
+          els.submitBtn.disabled = false;
+          els.submitBtn.textContent = 'Reset password';
+        });
     });
   </script>
 </body>
